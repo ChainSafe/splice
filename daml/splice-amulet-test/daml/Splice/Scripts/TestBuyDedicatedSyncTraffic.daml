@@ -109,3 +109,45 @@ test_BuyDedicatedSyncTraffic_belowMinTopup = do
       trafficAmount = 1 -- below any sane minTopupAmount
       registeredSynchronizerCid = registeredCid
       expectedDso = Some app.dso
+
+-- | Negative: `expectedDso` guards against a swapped-out AmuletRules. A mismatched `expectedDso`
+--   (here, a party that is not the DSO) is rejected by `checkExpectedDso` before any burn.
+test_BuyDedicatedSyncTraffic_wrongExpectedDso : Script ()
+test_BuyDedicatedSyncTraffic_wrongExpectedDso = do
+  d <- setupDefaultAppWithUsers
+  let app = d.app
+  let provider = d.provider1
+  runNextIssuance app
+
+  operator <- allocateParty "dedicatedSyncOperator"
+  let dedicatedSyncId = "dedicated-sync::1220bcbcbcbcbcbcbcbcbcbcbcbcbcbcbcbcbcbcbcbcbcbcbcbcbcbcbcbcbcbcbcbc"
+  registeredCid <- submit app.dso $ createCmd RegisteredSynchronizer with
+    dso = app.dso
+    synchronizerId = dedicatedSyncId
+    operator
+
+  amuletCid <- tap app provider 1_000_000.0
+  context <- getTransferContext app provider None
+  (amuletRulesCid, _) <- fetchAmuletRulesByKey app.dso
+
+  submitMustFail (actAs provider.primaryParty <> readAs app.dso) $
+    exerciseCmd amuletRulesCid AmuletRules_BuyDedicatedSyncTraffic with
+      inputs = [InputAmulet amuletCid]
+      context
+      provider = provider.primaryParty
+      memberId = "PAR::participant::1220ababababababababababababababababababababababababababababababab"
+      migrationId = 0
+      trafficAmount = 1_000_000
+      registeredSynchronizerCid = registeredCid
+      expectedDso = Some provider.primaryParty -- not the DSO
+
+-- | Negative: `RegisteredSynchronizer` requires a non-empty synchronizer id (template `ensure`).
+test_RegisteredSynchronizer_ensureNonEmpty : Script ()
+test_RegisteredSynchronizer_ensureNonEmpty = do
+  d <- setupDefaultAppWithUsers
+  let app = d.app
+  operator <- allocateParty "dedicatedSyncOperator"
+  submitMustFail app.dso $ createCmd RegisteredSynchronizer with
+    dso = app.dso
+    synchronizerId = ""
+    operator
