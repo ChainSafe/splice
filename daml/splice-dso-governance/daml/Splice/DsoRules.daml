@@ -29,7 +29,7 @@ import Splice.ValidatorLicense
 import Splice.Wallet.Subscriptions
 -- `RegisteredSynchronizer` (PoC): created by `DsoRules_RegisterSynchronizer` below; the template
 -- itself lives in splice-amulet because AmuletRules must be able to fetch it.
-import Splice.DecentralizedSynchronizer (MemberTraffic, RegisteredSynchronizer)
+import Splice.DecentralizedSynchronizer (MemberTraffic, RegisteredSynchronizer(..))
 
 import qualified Splice.CometBft as CometBft
 import Splice.Ans
